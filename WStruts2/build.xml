@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="WStruts2" default="deploy-webapp" basedir=".">
+	
+	<!-- O arquivo build.properties e referenciado pelo build.xml -->
+	<property file="build.properties" />
+	
+	<!-- Configura o endereco da pasta de instalacao do Tomcat -->
+	<property name="catalina.home"	value="C:/Projetos/Apache/apache-tomcat-7.0.77"/>
+	<!-- Configura o nome do context dessa aplicacao -->
+	<property name="war-nome"	value="${contexto-nome}"/>
+	<!-- Configura o diretorio remoto do FTP da aplicacao, caso possua -->
+	<property name="ftp-remotedir" value="wars-enviados/${contexto-nome}/${build-info.ano-mes-dia}" />
+	
+	<!-- Configuracoes basicas de diretorios fontes e classes -->
+	<property name="source"		value="${basedir}/src/main/java" />
+	<property name="build"		value="${basedir}/build/main/java" />
+	<property name="classes"	value="${build}/classes" />
+	<!-- Configura o diretorio que possui o conteudo web -->
+	<property name="WebContent"	value="${basedir}/WebContent" />
+	<property name="web.xml"	value="${WebContent}/WEB-INF/web.xml" />
+	<tstamp prefix="build-info">
+		<format property="data-atual" pattern="d-MMMM-yyyy" locale="pt" />
+		<format property="hora-atual" pattern="hh:mm:ss a z" locale="pt" />
+		<format property="ano-mes-dia" pattern="yyyy-MM-dd" locale="en" />
+	</tstamp>
+	<!-- Configura o diretorio que possui nossos JARs -->
+	<property name="lib"		value="${WebContent}/WEB-INF/lib" />
+
+	<!-- Configura Tomcat-Ant JARs -->
+	<import file="${catalina.home}/bin/catalina-tasks.xml"/>
+	<!-- Configura a referencia de classpath das nossas outras dependencias,
+		como Struts2 e etc -->
+	<path id="lib.jars">
+		<fileset dir="${lib}">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+	
+	<!-- Targets Executaveis -->
+	<target name="compilar-webapp" depends="" description="Compile web application">
+		<delete dir="${build}" />
+		<mkdir dir="${build}" />
+		<delete dir="${classes}" />
+		<mkdir dir="${classes}" />
+		<javac includeantruntime="false" srcdir="${source}" destdir="${classes}" classpathref="lib.jars" />
+	</target>
+	
+	<target name="gerarWar-webapp" depends="compilar-webapp">
+		<mkdir dir="${build}" />
+		<delete file="${build}/${war-nome}.war" />
+		<war warfile="${build}/${war-nome}.war" webxml="${web.xml}">
+			<classes dir="${classes}" />
+			<fileset dir="${WebContent}">
+				<!-- Precisa excluir o web.xml pois webxml ja e um atibuto da tag war acima -->
+				<exclude name="WEB-INF/web.xml" />
+			</fileset>
+			<manifest>
+				<attribute name="Built-By" value="${desenvolvedor}" />
+				<attribute name="Built-On" value="${build-info.data-atual}" />
+				<attribute name="Built-At" value="${build-info.hora-atual}" />
+			</manifest>
+		</war>		
+	</target>
+
+	<!-- Adiciona a nossa aplicacao ao Tomcat -->
+	<target name = "deploy-webapp" depends="gerarWar-webapp, undeploy-webapp">
+		<deploy				url="${tomcat.manager.url}"
+	    					username="${tomcat.manager.usuario}"
+	    					password="${tomcat.manager.senha}"
+	    					path="/${contexto-nome}"
+	    					war="file:${build}/${war-nome}.war"
+		/>
+	</target>
+
+	<!-- Remove a nossa aplicacao do Tomcat -->
+	<!--
+		Nota: As vezes o deploy nao e concluido devido ao leak de recursos entao
+		torna-se necessario editar o arquivo context.xml que se encontra na pasta
+		"tomcat/config" e incluir um dos atributos antiResourceLocking="true" ou
+		antiJARLocking="true"(essa ultima parece nao existir no tomcat8.5).
+		Como antiJARLocking e um subset de antiResourceLocking,	entao escolha
+		apenas um dos dois como true pra evitar trabalho dobrado pelo tomcat.
+	-->
+	<target name = "undeploy-webapp">
+		<undeploy			url="${tomcat.manager.url}"
+	    					username="${tomcat.manager.usuario}"
+	    					password="${tomcat.manager.senha}"
+	    					path="/${contexto-nome}"
+	    					failonerror="false"
+		/>
+	</target>
+
+	<!-- Inicia a nossa aplicacao no Tomcat -->
+	<target name = "start-webapp">
+		<start				url="${tomcat.manager.url}"
+	    					username="${tomcat.manager.usuario}"
+							password="${tomcat.manager.senha}"
+	    					path="/${contexto-nome}"
+		/>
+	</target>
+	
+	<!-- Paraliza a nossa aplicacao no Tomcat -->
+	<target name = "stop-webapp">
+		<stop				url="${tomcat.manager.url}"
+							username="${tomcat.manager.usuario}"
+	       					password="${tomcat.manager.senha}"
+	       					path="/${contexto-nome}"
+	       					failonerror="false"
+		/>
+	</target>
+
+	<!-- Recarrega a nossa aplicacao no Tomcat -->
+	<target name="reload-webapp" description="Reload web application">
+		<reload				url="${tomcat.manager.url}"
+							username="${tomcat.manager.usuario}"
+							password="${tomcat.manager.senha}"
+							path="/${contexto-nome}"
+		/>
+	</target>
+
+	<target name="ftp" depends="" description="envia o arquivo war para o servidor">
+		<ftp 
+			server="${ftp-servidor}" remotedir="${ftp-remotedir}"
+			userid="${ftp-usuario.id}" password="${ftp-usuario.senha}"
+			action="mkdir" verbose="yes">
+		</ftp>
+		<ftp 
+			server="${ftp-servidor}" remotedir="${ftp-remotedir}"
+			userid="${ftp-usuario.id}" password="${ftp-usuario.senha}"
+			action="send" verbose="yes" depends="yes">
+			<fileset file="${build}/${war-nome}" />
+		</ftp>
+	</target>
+
+	<target name="mail-upload-complete">
+		<mail from="ant@bv.com"
+		      tolist="bv@bv.com"
+		      subject="${war-nome} foi enviado para o servidor"
+		      message="O arquivo ${war-nome} foi enviado  ${ftp-servidor} em ${ftp-remotedir}"/>
+	</target>
+</project>

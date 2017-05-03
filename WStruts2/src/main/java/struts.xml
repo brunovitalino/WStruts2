@@ -1,0 +1,12 @@
+<!DOCTYPE struts PUBLIC
+      "-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+      "http://struts.apache.org/dtds/struts-2.0.dtd">
+<struts>
+	<constant name="struts.devMod" value="true" />
+	<package name="Struts" namespace="/" extends="struts-default">
+		<action name="validar" class="com.bv.action.UsuarioAction">
+			<result name="success">/login-sucesso.jsp</result>
+			<result name="error">/login-erro.jsp</result>
+		</action>
+	</package>
+</struts>

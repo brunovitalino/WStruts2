@@ -42,6 +42,9 @@
 		<mkdir dir="${build}" />
 		<delete dir="${classes}" />
 		<mkdir dir="${classes}" />
+		<copy todir="${classes}">
+		    <fileset dir="${source}" excludes="${source}/*.java"/>
+		</copy>
 		<javac includeantruntime="false" srcdir="${source}" destdir="${classes}" classpathref="lib.jars" />
 	</target>
 	
